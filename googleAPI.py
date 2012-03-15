@@ -16,6 +16,9 @@ from config import WIKI_USER
 from config import WIKI_PASS
 
 class _GoogleApps():
+    """
+    This class release some functions to works with google API
+    """
     wiki_server = xmlrpclib.ServerProxy('https://wiki.griddynamics.net/rpc/xmlrpc');
     token_from_wiki = wiki_server.confluence1.login(WIKI_USER, WIKI_PASS);  
     token = "";
@@ -23,7 +26,17 @@ class _GoogleApps():
     consumerKey = "";
     consumerSecret = "";  
 
-    def request(self,content,NamePage,token,server,table_headers,flagNewPage):        
+    def request(self,content,NamePage,token,server,table_headers,flagNewPage):    
+        """
+        request(content,NamePage,token,server,table_headers,flagNewPage)
+        This function add content to wiki's page
+        Input:
+        NamePage     string
+        token     string
+        server     xmlrpc server
+        table_headers     string
+        flagNewPage    boolean
+        """
         pageExist = False;
         try:
             page = server.confluence1.getPage(token, SPACE, NamePage);
@@ -51,6 +64,11 @@ class _GoogleApps():
     
     
     def LoadTokenFromFile(self,fileName):
+        """
+        LoadTokenFromFile(fileName)
+        This function load's from file domain, consumerKey and consumerSecret
+        filename    string
+        """
         oauthToken = "";
         try:
             oauthfile = open(fileName, 'rb')
@@ -67,6 +85,14 @@ class _GoogleApps():
         self.token = self.LoadTokenFromFile(fileName)
             
     def OAuthConnect(self,googleObj,consumerKey,consumerSecret):
+        """
+        OAuthConnect(googleObj,consumerKey,consumerSecret)
+        This function connect's to some google api objects.
+        For example: gdata.apps.service.AppsService()
+        googleObj    gdata class
+        consumerKey    string
+        consumerSecret    string
+        """
         if self.token != "fileError":
             googleObj.domain = self.domain;
             googleObj.SetOAuthInputParameters(gdata.auth.OAuthSignatureMethod.HMAC_SHA1,consumerKey,consumerSecret)
@@ -76,12 +102,21 @@ class _GoogleApps():
             return self.token;  
                
     def Auth(self):
+        """
+        Auth();
+        Autorixation some google api servise by login and password
+        """
         self.groupClient = gdata.apps.groups.client.GroupsProvisioningClient(domain=self.domain)
         self.groupClient.ClientLogin(email=self.email, password=self.password, source ='apps')
         #access_token = gdata.gauth.ClientLoginToken(token);
         #self.groupClient = gdata.apps.groups.client.GroupsProvisioningClient(domain=self.domain, auth_token = access_token)
        
     def PrintGroupDetails(self,groupsEntry):
+        """
+        PrintGroupDetails(groupsEntry)
+        Function to print groups data
+        groupsEntry    list
+        """
         print 'Group ID: ' + groupsEntry.group_id
         print 'Group Name: ' + groupsEntry.group_name
         print 'Description: ' + groupsEntry.description
@@ -89,12 +124,22 @@ class _GoogleApps():
         print ''
     
     def PrintMemberDetails(self,memberEntry):
+        """
+        PrintMemberDetails(memberEntry)
+        Function to print member data
+        memberEntry    list
+        """
         print 'Member ID: ' + memberEntry.member_id
         print 'Member Type: ' + memberEntry.member_type
         print 'Is Direct Member: ' + memberEntry.direct_member
         print ''
         
     def UsersInGroups(self,group_filter = domain):
+        """
+        UsersInGroups(group_filter = domain)
+        This function find groups in witch members consists and add content to wiki
+        group_filter    string; some filter
+        """
         pageTitle = "";   
         pageName = "";
         pageMembers = " ";
@@ -157,6 +202,10 @@ class _GoogleApps():
     
 
     def GroupsWithMember(self):
+        """
+        GroupsWithMember()
+        This function find the user is a member of any groups and add content to wiki
+        """
         content = "";
         pageMembersOfGroups = " ";
         pageUserName = " "
@@ -196,10 +245,22 @@ class _GoogleApps():
             
             
     def suspended(self,beginStr,userName,endStr):
+        """
+        suspended(beginStr,userName,endStr)
+        This function add some content to User
+        beginStr    sting
+        userName    string
+        endStr    string
+        """
         return beginStr + userName + endStr;
     
 
     def findSimbols(self,stringName):
+        """
+        findSimbols(stringName)
+        This function excludes some chars from input string
+        stringName    string
+        """
         chars = ['!', '#', '&', '(', ')', '*', ',', '.', ':', ';', '<', '>', '?', '@', '[', ']', '^'];
         i = 0;
         while (i < len(chars)):
@@ -218,6 +279,10 @@ class _GoogleApps():
         return stringName;
     
     def SortByAlphabet(self, inputStr):
+        """
+        This function use to sort some list
+        inputStr string
+        """
         return inputStr[0][0].lower()
     
     
