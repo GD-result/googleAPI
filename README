@@ -1,0 +1,9 @@
+Release some google api functions
+
+
+Needs config.py file which contains variables:
+
+	TOP_PAGE - Top page on wiki. String
+	SPACE - Space on wiki. String
+	WIKI_USER - Your wiki username. String
+	WIKI_PASS - Your wiki password. String
