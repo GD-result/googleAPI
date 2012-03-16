@@ -37,6 +37,11 @@ class _GoogleApps():
         table_headers     string
         flagNewPage    boolean
         """
+        try:
+            page = self.wiki_server.confluence1.getServerInfo(token)
+        except xmlrpclib.Fault, error:
+            if error.faultCode == 0:
+                self.token_from_wiki = token = self.wiki_server.confluence1.login(WIKI_USER, WIKI_PASS);
         pageExist = False;
         try:
             page = server.confluence1.getPage(token, SPACE, NamePage);
@@ -149,10 +154,12 @@ class _GoogleApps():
         pageDescription = " ";
         pageEmailPermissions = " "
         try:
-            groupsObj = membersObj = self.OAuthConnect(gdata.apps.groups.service.GroupsService(), self.consumerKey, self.consumerSecret);
+            groupsObj = membersObj = self.OAuthConnect(gdata.apps.groups.service.GroupsService(), \
+                                                       self.consumerKey, self.consumerSecret);
             if (membersObj == "fileError"):
                 return -1;
-            allUsersObj = self.OAuthConnect(gdata.apps.service.AppsService(), self.consumerKey, self.consumerSecret);
+            allUsersObj = self.OAuthConnect(gdata.apps.service.AppsService(), self.consumerKey, \
+                                                                         self.consumerSecret);
             allUsersInDomain = allUsersObj.RetrieveAllUsers()
             allGroups = groupsObj.RetrieveAllGroups();
         except gdata.apps.service.AppsForYourDomainException, exception:
@@ -176,23 +183,29 @@ class _GoogleApps():
                         if (allUsersEntry.title.text.encode('UTF-8') == member['memberId'].split("@")[0]):
                             if (allUsersEntry.login.suspended == "true"):
                                 if member['memberId'].count(group_filter) != 0: 
-                                    pageEmails = pageEmails + self.suspended("{color:red}", member['memberId'], "{color}") + ", ";
-                                    pageMembers = pageMembers + self.suspended("{color:red}", member['memberId'].split("@")[0], "{color}") + ", ";
+                                    pageEmails = pageEmails + self.suspended("{color:red}", member['memberId'], \
+                                                                                            "{color}") + ", ";
+                                    pageMembers = pageMembers + self.suspended("{color:red}",\
+                                                          member['memberId'].split("@")[0], "{color}") + ", ";
                                 else:
-                                    pageExternalMembers = pageExternalMembers + self.suspended("{color:red}", member['memberId'], "{color}") + ", ";
+                                    pageExternalMembers = pageExternalMembers + self.suspended("{color:red}", \
+                                                                        member['memberId'], "{color}") + ", ";
                             else:
                                 if member['memberId'].count(group_filter) != 0: 
                                     pageEmails = pageEmails + member['memberId'] + ", ";
-                                    pageMembers = pageMembers + self.suspended("[~", member['memberId'].split("@")[0], "]") + ", ";
+                                    pageMembers = pageMembers + self.suspended("[~", \
+                                        member['memberId'].split("@")[0], "]") + ", ";
                                 else:
-                                    pageExternalMembers = self.suspended("[~", pageExternalMembers + member['memberId'], "]") + ", ";
+                                    pageExternalMembers = self.suspended("[~", \
+                                        pageExternalMembers + member['memberId'], "]") + ", ";
                             break;
             if (len(pageEmails) > 2): 
                 pageEmails = pageEmails[:-2]
                 pageMembers = pageMembers[:-2];       
             if (len(pageExternalMembers) > 2):
                 pageExternalMembers = pageExternalMembers[:-2]         
-            table_headers = "h1." + pageTitle + "\n ||Members ||Emails ||ExternalMembers ||Subgroups ||Description ||EmailPermissions ||\n";
+            table_headers = "h1." + pageTitle \
+                + "\n ||Members ||Emails ||ExternalMembers ||Subgroups ||Description ||EmailPermissions ||\n";
             pageId = self.request("|" + pageMembers + "|" + pageEmails + "|" + pageExternalMembers + "|" \
                     + pageSubgroups + "|" + pageDescription + "|" + pageEmailPermissions +"|\n", pageName, 
                     self.token_from_wiki, self.wiki_server,table_headers,True);
