@@ -1,7 +1,9 @@
 Release some google api functions
 
+To work with google apis you needs to download google library from:
+http://code.google.com/p/gdata-python-client/downloads/list
 
-Needs config.py file which contains variables:
+config.py file:
 
 	TOP_PAGE - Top page on wiki. String
 	SPACE - Space on wiki. String
