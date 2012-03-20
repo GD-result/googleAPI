@@ -86,7 +86,7 @@ class _GoogleApps():
             oauthToken = "fileError"
         return oauthToken;    
     
-    def __init__(self, fileName = "oauth.txt"):
+    def __init__(self, fileName = "oauth.1.txt"):
         self.token = self.LoadTokenFromFile(fileName)
             
     def OAuthConnect(self,googleObj,consumerKey,consumerSecret):
@@ -139,7 +139,7 @@ class _GoogleApps():
         print 'Is Direct Member: ' + memberEntry.direct_member
         print ''
         
-    def UsersInGroups(self,group_filter = domain):
+    def UsersInGroups(self,group_filter = "griddynamics.com"):
         """
         UsersInGroups(group_filter = domain)
         This function find groups in witch members consists and add content to wiki
@@ -153,6 +153,7 @@ class _GoogleApps():
         pageSubgroups = " "
         pageDescription = " ";
         pageEmailPermissions = " "
+        memberSuspended = "";
         try:
             groupsObj = membersObj = self.OAuthConnect(gdata.apps.groups.service.GroupsService(), \
                                                        self.consumerKey, self.consumerSecret);
@@ -160,18 +161,19 @@ class _GoogleApps():
                 return -1;
             allUsersObj = self.OAuthConnect(gdata.apps.service.AppsService(), self.consumerKey, \
                                                                          self.consumerSecret);
-            allUsersInDomain = allUsersObj.RetrieveAllUsers()
-            allGroups = groupsObj.RetrieveAllGroups();
+            allGroups = allGroups2 = groupsObj.RetrieveAllGroups();
         except gdata.apps.service.AppsForYourDomainException, exception:
             print exception['status'] # exception.error_code
             return -1;  
         for group in allGroups:
             pageTitle = group['groupId'];
-            allMembersInGroup = membersObj.RetrieveAllMembers(group['groupId'],False);
+            allMembersInGroup = membersObj.RetrieveAllMembers(group['groupId']);
             allMembersInGroup = sorted(allMembersInGroup, key=lambda k: k['memberId'].lower()) 
             pageName = group['groupId'].split("@")[0] + " mailing list"; 
             pageEmails = " ";
             pageMembers = " ";
+            pageSubgroups = " "
+            pageExternalMembers = " ";
             if (group['description'] != None):
                 pageDescription = group['description'];
             else:
@@ -179,31 +181,34 @@ class _GoogleApps():
             pageEmailPermissions = group['emailPermission']; 
             for member in allMembersInGroup:
                 if member['memberId'] != '*':
-                    for allUsersEntry in allUsersInDomain.entry:
-                        if (allUsersEntry.title.text.encode('UTF-8') == member['memberId'].split("@")[0]):
-                            if (allUsersEntry.login.suspended == "true"):
-                                if member['memberId'].count(group_filter) != 0: 
-                                    pageEmails = pageEmails + self.suspended("{color:red}", member['memberId'], \
+                    if (member["memberType"] == "Group"):
+                        pageSubgroups = pageSubgroups + member["memberId"] + ", "
+                    else:
+                        if (member['memberId'].count(group_filter) != 0) and \
+                                            (len(member['memberId'].split("@")[1]) == len(group_filter)):
+                            try:
+                                isMemberSuspended = allUsersObj.RetrieveUser(member['memberId'].split("@")[0]);
+                                memberSuspended = isMemberSuspended.login.suspended;
+                            except:
+                                memberSuspended = "false"
+                            if (memberSuspended == "true"):
+                                pageEmails = pageEmails + self.suspended("{color:red}", member['memberId'], \
                                                                                             "{color}") + ", ";
-                                    pageMembers = pageMembers + self.suspended("{color:red}",\
-                                                          member['memberId'].split("@")[0], "{color}") + ", ";
-                                else:
-                                    pageExternalMembers = pageExternalMembers + self.suspended("{color:red}", \
-                                                                        member['memberId'], "{color}") + ", ";
+                                pageMembers = pageMembers + self.suspended("{color:red}",\
+                                             member['memberId'].split("@")[0], "{color}") + ", "; 
                             else:
-                                if member['memberId'].count(group_filter) != 0: 
-                                    pageEmails = pageEmails + member['memberId'] + ", ";
-                                    pageMembers = pageMembers + self.suspended("[~", \
-                                        member['memberId'].split("@")[0], "]") + ", ";
-                                else:
-                                    pageExternalMembers = self.suspended("[~", \
-                                        pageExternalMembers + member['memberId'], "]") + ", ";
-                            break;
+                                pageEmails = pageEmails + member['memberId'] + ", ";
+                                pageMembers = pageMembers + self.suspended("[~", \
+                                                member['memberId'].split("@")[0], "]") + ", ";
+                        else:
+                            pageExternalMembers = pageExternalMembers + member['memberId'] + ", ";
             if (len(pageEmails) > 2): 
                 pageEmails = pageEmails[:-2]
                 pageMembers = pageMembers[:-2];       
             if (len(pageExternalMembers) > 2):
-                pageExternalMembers = pageExternalMembers[:-2]         
+                pageExternalMembers = pageExternalMembers[:-2] 
+            if (len(pageSubgroups) > 2):
+                pageSubgroups = pageSubgroups[:-2]        
             table_headers = "h1." + pageTitle \
                 + "\n ||Members ||Emails ||ExternalMembers ||Subgroups ||Description ||EmailPermissions ||\n";
             pageId = self.request("|" + pageMembers + "|" + pageEmails + "|" + pageExternalMembers + "|" \
@@ -214,7 +219,7 @@ class _GoogleApps():
         return 0;
     
 
-    def GroupsWithMember(self):
+    def GroupsWithMember(self,filter = "griddynamics.com" ):
         """
         GroupsWithMember()
         This function find the user is a member of any groups and add content to wiki
@@ -226,31 +231,39 @@ class _GoogleApps():
         pageName = "Gmail-Users"
         table_headers = "h1." + pageTitle + "\n ||User ||Member of groups ||\n"
         try:
-            membersObj = self.OAuthConnect(gdata.apps.service.AppsService(), self.consumerKey, self.consumerSecret)
-            if (membersObj == "fileError"):
+            groupObj = self.OAuthConnect(gdata.apps.groups.service.GroupsService(), self.consumerKey, \
+                                                                        self.consumerSecret);
+            if (groupObj == "fileError"):
                 return -1;
-            groupObj = self.OAuthConnect(gdata.apps.groups.service.GroupsService(), self.consumerKey, self.consumerSecret);
-            allMembers = membersObj.RetrieveAllUsers();
         except gdata.apps.service.AppsForYourDomainException, exception:
             print exception['status'] # exception.error_code
-            return -1;
-        sortedMasMembers = [];
-        for memberEntry in allMembers.entry:
-            sortedMasMembers.append([memberEntry.title.text.encode('UTF-8'),memberEntry.login.suspended])  
-        sortedMasMembers.sort(key = self.SortByAlphabet) 
+            return -1; 
         flagNewPage = True;
+        sortedMasMembers = self.AllUserInOrganization();
         for i in range(len(sortedMasMembers)):
+            print "User № " + str(i);
             allGroups = groupObj.RetrieveGroups(sortedMasMembers[i][0], True);
-            pageMembersOfGroups = " ";
+            pageMembersOfGroups = [];
             for group in allGroups:
-                pageMembersOfGroups = pageMembersOfGroups + group['groupId'] + ", ";
-            if (len(pageMembersOfGroups) > 2):
-                pageMembersOfGroups = pageMembersOfGroups[:-2]
+                pageMembersOfGroups.append(group['groupId'] + ", ")
+            
+            if (len(pageMembersOfGroups) > 0):
+                pageMembersOfGroups = sorted(pageMembersOfGroups, key=lambda value: value[0].lower())
+                lastUser = pageMembersOfGroups[-1]; 
+                lastUser = lastUser[:-2];
+                pageMembersOfGroups[-1] = lastUser;
+                
             if (sortedMasMembers[i][1] == "true"):
                 pageUserName = self.suspended("{color:red}", sortedMasMembers[i][0], "{color}");
             else:
-                pageUserName = self.suspended("[~", sortedMasMembers[i][0], "]"); 
-            content += "|" + pageUserName + "|" + pageMembersOfGroups + "| \n";      
+                if (sortedMasMembers[i][0].count("@") == 0) or (sortedMasMembers[i][0].count(filter) != 0): 
+                    pageUserName = self.suspended("[~", sortedMasMembers[i][0].split("@")[0], "]"); 
+                else:
+                    pageUserName = sortedMasMembers[i][0]; 
+            pageMembersOfGroupsStr = " ";  
+            for i in range(len(pageMembersOfGroups)):
+                pageMembersOfGroupsStr += pageMembersOfGroups[i];
+            content += "|" + pageUserName + "|" + pageMembersOfGroupsStr + "| \n";      
         pageId = self.request(content, pageName, self.token_from_wiki, self.wiki_server,table_headers,flagNewPage);
         self.wiki_server.confluence1.addLabelByName(self.token_from_wiki, pageName, pageId);
         flagNewPage = False;
@@ -298,7 +311,33 @@ class _GoogleApps():
         """
         return inputStr[0][0].lower()
     
+    def AllUserInOrganization(self):
+        masUsers = [];
+        groupsObj = self.OAuthConnect(gdata.apps.groups.service.GroupsService(), self.consumerKey, \
+                                                                                self.consumerSecret);
+        membersObj = self.OAuthConnect(gdata.apps.service.AppsService(), self.consumerKey,\
+                                                                                self.consumerSecret);
+        allGroups = groupsObj.RetrieveAllGroups();
+        allUsers = membersObj.RetrieveAllUsers();
+
+        for user in allUsers.entry:
+            masUsers.append([user.title.text.encode('UTF-8'), user.login.suspended]);
+            
+        for group in allGroups:
+            allUsersInGroup = groupsObj.RetrieveAllMembers(group['groupId']);
+            for user in allUsersInGroup:
+                if (user['memberType'] == 'User') and (user['memberId'] != '*'):
+                    i = 0;
+                    for i in range(len(masUsers)):
+                        if (user['memberId'].split("@")[0] == masUsers[i][0].split("@")[0]):
+                            break
+                    if (i == len(masUsers)-1):
+                        masUsers.append([user['memberId'],"false"]);
+        masUsers = sorted(masUsers, key=lambda value: value[0].lower())
+        return masUsers;
+        
+    
     
 google = _GoogleApps() 
-google.UsersInGroups()
 google.GroupsWithMember();
+google.UsersInGroups()
